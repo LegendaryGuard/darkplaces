@@ -53,6 +53,8 @@ LIB_SND_NULL=
 
 ###### Common objects and flags #####
 
+#	console.o \
+
 # Common objects
 OBJ_COMMON= \
 	bih.o \
@@ -83,7 +85,7 @@ OBJ_COMMON= \
 	com_infostring.o \
 	com_msg.o \
 	common.o \
-	console.o \
+	cppconsole.o \
 	csprogs.o \
 	curves.o \
 	cvar.o \
