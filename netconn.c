@@ -28,6 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "hmac.h"
 #include "mdfour.h"
 #include <time.h>
+#ifdef CONFIG_VOIP
+#include "snd_voip.h"
+#endif
 
 #define QWMASTER_PORT 27000
 #define DPMASTER_PORT 27950
@@ -35,6 +38,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // note this defaults on for dedicated servers, off for listen servers
 cvar_t sv_public = {CF_SERVER, "sv_public", "0", "1: advertises this server on the master server (so that players can find it in the server browser); 0: allow direct queries only; -1: do not respond to direct queries; -2: do not allow anyone to connect; -3: already block at getchallenge level"};
 cvar_t sv_public_rejectreason = {CF_SERVER, "sv_public_rejectreason", "The server is closing.", "Rejection reason for connects when sv_public is -2"};
+#ifdef CONFIG_VOIP
+cvar_t sv_voip = {CF_SERVER, "sv_voip", "1", "Enable voip support in server"};
+cvar_t sv_voip_echo = {CF_SERVER, "sv_voip_echo", "0", "Echo mode for VOIP, for testing purpose"};
+cvar_t sv_voip_force = {CF_SERVER, "sv_voip_force", "0", "Force VOIP between players, even if QC didn't want it"};
+#endif
 static cvar_t sv_heartbeatperiod = {CF_SERVER | CF_ARCHIVE, "sv_heartbeatperiod", "120", "how often to send heartbeat in seconds (only used if sv_public is 1)"};
 extern cvar_t sv_status_privacy;
 
@@ -2388,6 +2396,18 @@ static int NetConn_ClientParsePacket(lhnetsocket_t *mysocket, unsigned char *dat
 		// we're done processing this packet now
 		return true;
 	}
+	#ifdef CONFIG_VOIP
+	else if (fromserver && length >= 6 && data[0] == 'V' && data[1] == 'O' && data[2] == 'I' && data[3] == 'P')
+	{
+		//VOIP client
+		extern cvar_t voipvolume;
+		if (voipvolume.value > 0)
+		{
+			S_VOIP_Received((unsigned char*)data + 6, length - 6, (int)data[4]);
+		}
+		return true;
+	}
+	#endif
 	// quakeworld ingame packet
 	if (fromserver && cls.protocol == PROTOCOL_QUAKEWORLD && length >= 8 && (ret = NetConn_ReceivedMessage(cls.netcon, data, length, cls.protocol, net_messagetimeout.value)) == 2)
 	{
@@ -3569,6 +3589,40 @@ static int NetConn_ServerParsePacket(lhnetsocket_t *mysocket, unsigned char *dat
 		// we're done processing this packet now
 		return true;
 	}
+	#ifdef CONFIG_VOIP
+	else if (host_client && length >= 6 && sv_voip.integer && data[0] == 'V' && data[1] == 'O' && data[2] == 'I' && data[3] == 'P')
+	{
+		//VOIP server
+		prvm_edict_t *ed;
+		int voipgroup = 0, voipsource = 0;
+		prvm_prog_t *prog = SVVM_prog;
+		client_t *client;
+		data[4] = i; //host client number
+		ed = PRVM_EDICT_NUM(i + 1);
+		voipgroup = PRVM_serveredictfloat(ed, voipgroup);
+		voipsource = i;
+		if (PRVM_serverfunction(voip_event))
+		{
+			PRVM_G_FLOAT(OFS_PARM0) = (int)voipsource;
+			prog->ExecuteProgram(prog, PRVM_serverfunction(voip_event), "QC function voip_event is missing");
+			if (!PRVM_G_FLOAT(OFS_RETURN)) return true;
+		}
+		if (!voipgroup && !sv_voip_force.integer) return true;
+		for (i = 0;i < svs.maxclients;i++)
+		{
+			client = &svs.clients[i];
+			if (client->active && client->netconnection && (i != voipsource || sv_voip_echo.integer))
+			{
+				ed = PRVM_EDICT_NUM(i + 1);
+				if (sv_voip_force.integer || PRVM_serveredictfloat(ed, voipgroup) == voipgroup || PRVM_serveredictfloat(ed, voiplistengroup) == voipgroup)
+				{
+					NetConn_Write(client->netconnection->mysocket, data, length, &client->netconnection->peeraddress);
+				}
+			}
+		}
+		return true;
+	}
+	#endif
 	// netquake control packets, supported for compatibility only, and only
 	// when running game protocols that are normally served via this connection
 	// protocol
@@ -4152,6 +4206,11 @@ void NetConn_Init(void)
 	Cvar_RegisterVariable(&net_address_ipv6);
 	Cvar_RegisterVariable(&sv_public);
 	Cvar_RegisterVariable(&sv_public_rejectreason);
+	#ifdef CONFIG_VOIP
+	Cvar_RegisterVariable(&sv_voip_echo);
+	Cvar_RegisterVariable(&sv_voip_force);
+	Cvar_RegisterVariable(&sv_voip);
+	#endif
 	Cvar_RegisterVariable(&sv_heartbeatperiod);
 	for (j = 0; j < DPMASTER_COUNT; ++j)
 		Cvar_RegisterVariable(&sv_masters[j]);
