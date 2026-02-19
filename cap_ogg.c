@@ -3,7 +3,7 @@
 #include "quakedef.h"
 #include "client.h"
 #include "cap_ogg.h"
-#ifdef CONFIG_VOIP
+#ifdef CAP_OGG_OPUS
 #include <opus.h>
 #endif
 
@@ -18,7 +18,7 @@ static cvar_t cl_capturevideo_ogg_theora_keyframe_auto_threshold = {CF_CLIENT | 
 static cvar_t cl_capturevideo_ogg_theora_noise_sensitivity = {CF_CLIENT | CF_ARCHIVE, "cl_capturevideo_ogg_theora_noise_sensitivity", "1", "video noise sensitivity (0 to 6); lower is better"};
 static cvar_t cl_capturevideo_ogg_theora_sharpness = {CF_CLIENT | CF_ARCHIVE, "cl_capturevideo_ogg_theora_sharpness", "0", "sharpness (0 to 2); lower is sharper"};
 static cvar_t cl_capturevideo_ogg_vorbis_quality = {CF_CLIENT | CF_ARCHIVE, "cl_capturevideo_ogg_vorbis_quality", "3", "audio quality (-1 to 10); higher is better"};
-#ifdef CONFIG_VOIP
+#ifdef CAP_OGG_OPUS
 static cvar_t cl_capturevideo_ogg_opus = {CF_CLIENT | CF_ARCHIVE, "cl_capturevideo_ogg_opus", "1", "use opus codec to encode audio"};
 static cvar_t cl_capturevideo_ogg_opus_bitrate = {CF_CLIENT | CF_ARCHIVE, "cl_capturevideo_ogg_opus_bitrate", "256", "audio bitrate for opus (32 to 256 kbps)"};
 #endif
@@ -595,7 +595,7 @@ void SCR_CaptureVideo_Ogg_Init(void)
 	Cvar_RegisterVariable(&cl_capturevideo_ogg_theora_noise_sensitivity);
 	Cvar_RegisterVariable(&cl_capturevideo_ogg_theora_sharpness);
 	Cvar_RegisterVariable(&cl_capturevideo_ogg_vorbis_quality);
-	#ifdef CONFIG_VOIP
+	#ifdef CAP_OGG_OPUS
 	Cvar_RegisterVariable(&cl_capturevideo_ogg_opus);
 	Cvar_RegisterVariable(&cl_capturevideo_ogg_opus_bitrate);
 	#endif
@@ -643,7 +643,7 @@ typedef struct capturevideostate_ogg_formatspecific_s
 	int channels;
 
 	allocatedoggpage_t videopage, audiopage;
-	#ifdef CONFIG_VOIP
+	#ifdef CAP_OGG_OPUS
 	int opus;
 	int opus_sample_size;
 	#define OPUS_BUFFER_SIZE 4096
@@ -689,7 +689,7 @@ static void SCR_CaptureVideo_Ogg_Interleave(void)
 			if(qogg_stream_pageout(&format->vo, &pg) > 0)
 			{
 				format->audiopage.len = pg.header_len + pg.body_len;
-				#ifdef CONFIG_VOIP
+				#ifdef CAP_OGG_OPUS
 				if (format->opus)
 					format->audiopage.time = (double)qogg_page_granulepos(&pg) / (double)cls.capturevideo.soundrate;
 				else
@@ -760,7 +760,7 @@ static void SCR_CaptureVideo_Ogg_EndVideo(void)
 
 	if(cls.capturevideo.soundrate)
 	{
-		#ifdef CONFIG_VOIP
+		#ifdef CAP_OGG_OPUS
 		if (format->opus)
 		{
 			int encsize;
@@ -831,7 +831,7 @@ static void SCR_CaptureVideo_Ogg_EndVideo(void)
 		}
 
 		qogg_stream_clear(&format->vo);
-		#ifdef CONFIG_VOIP
+		#ifdef CAP_OGG_OPUS
 		if (format->opus)
 		{
 			opus_encoder_destroy(format->opus_encoder);
@@ -846,7 +846,7 @@ static void SCR_CaptureVideo_Ogg_EndVideo(void)
 
 	qogg_stream_clear(&format->to);
 	qtheora_clear(&format->ts);
-	#ifdef CONFIG_VOIP
+	#ifdef CAP_OGG_OPUS
 	if (!format->opus)
 	#endif
 		qvorbis_info_clear(&format->vi);
@@ -952,7 +952,7 @@ static void SCR_CaptureVideo_Ogg_SoundFrame(const portable_sampleframe_t *paintb
 	size_t i;
 	int j;
 	ogg_packet pt;
-	#ifdef CONFIG_VOIP
+	#ifdef CAP_OGG_OPUS
 	if (format->opus)
 	{
 		size_t copied = 0;
@@ -1043,7 +1043,7 @@ void SCR_CaptureVideo_Ogg_BeginVideo(void)
 		format->serial1 = rand();
 		qogg_stream_init(&format->to, format->serial1);
 
-		#ifdef CONFIG_VOIP
+		#ifdef CAP_OGG_OPUS
 		format->opus = cl_capturevideo_ogg_opus.integer;
 		if (format->opus && cls.capturevideo.soundchannels > 2)
 		{
@@ -1154,7 +1154,7 @@ void SCR_CaptureVideo_Ogg_BeginVideo(void)
 		// vorbis?
 		if(cls.capturevideo.soundrate)
 		{
-			#ifdef CONFIG_VOIP
+			#ifdef CAP_OGG_OPUS
 			if (format->opus)
 			{
 				int err;
@@ -1201,7 +1201,7 @@ void SCR_CaptureVideo_Ogg_BeginVideo(void)
 
 		if(cls.capturevideo.soundrate)
 		{
-			#ifdef CONFIG_VOIP
+			#ifdef CAP_OGG_OPUS
 			if (format->opus)
 			{
 				unsigned char header_data[19];
