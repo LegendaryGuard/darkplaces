@@ -2623,9 +2623,10 @@ float MOVETYPE_USER_LAST = 191;
 //field definitions:
 .float voipgroup;
 .float voiplistengroup;
-float(float client) voip_event;
-float(float client) voip_echo_test;
-void(float on) voip_talk;
+//The following functions may be defined to access VoIP from the VM:
+//float(float client) voip_event;
+//float(float client) voip_echo_test;
+//void(float on) voip_talk;
 //description:
 //voip feature.
 
