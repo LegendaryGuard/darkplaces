@@ -1468,6 +1468,10 @@ void coverage() = #642;  // Reports a coverage event. The engine counts for each
 //see: dpextensions.qc
 .float voipgroup;
 .float voiplistengroup;
+//The following functions may be defined to access VoIP from the VM:
+//float(float client) voip_event;
+//float(float client) voip_echo_test;
+//void(float on) voip_talk;
 
 //DP_QC_FS_SEARCH_PACKFILE
 //idea: Mario
